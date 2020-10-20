@@ -51,6 +51,7 @@ sentence returns [ASTNode node]:
 	println {$node =$println.node;}
 	|conditional{$node =$conditional.node;}
 	|loop {$node = $loop.node;}
+	|read {$node=$read.node;}
 	|var_decl {$node = $var_decl.node;}
 	|var_assign {$node = $var_assign.node;}
 	|up {$node = $up.node;}
@@ -75,19 +76,23 @@ conditional returns [ASTNode node]:
 		{
 			List<ASTNode> body = new ArrayList<ASTNode>();
 		}
-			(s1=sentence {body.add($s1.node);})* END SEMICOLON
-		ELSE 
+			(s1=sentence {body.add($s1.node);})* 
+		(ELSE 
 		{
 			List<ASTNode> elseBody = new ArrayList<ASTNode>();
 		}
-			(s2=sentence {elseBody.add($s2.node);})* END SEMICOLON
+			(s2=sentence {elseBody.add($s2.node);})* 
 		
 		{
 			$node=new If($expression.node,body, elseBody );
-		}
+		})?
+		END SEMICOLON
 		 ;
 println returns [ASTNode node]: PRINT expression SEMICOLON
  {$node = new Println($expression.node);};
+ 
+read returns [ASTNode node]: READ expression SEMICOLON
+ {$node = new Read($expression.text);};
  
 var_decl returns [ASTNode node]:
 	VAR ID SEMICOLON {$node = new VarDecl($ID.text);}
@@ -99,16 +104,26 @@ var_assign returns [ASTNode node]:
  
 expression returns [ASTNode node]:
 	t1=factor{$node = $t1.node;}
-		(PLUS t2=factor{$node = new Addition($node, $t2.node);})*;
+		(PLUS t2=factor{$node = new Addition($node, $t2.node);} 
+			| MINUS t2=factor{$node = new Substraction($node, $t2.node);}
+			| OR t2=factor{$node = new Or($node, $t2.node);}
+			| AND t2=factor{$node = new And($node, $t2.node);}
+			)* 
+		;
 		
 factor returns [ASTNode node]: t1=term{$node = $t1.node;}
-	(MULTIPLICATION t2=term{$node = new Multiplication($node, $t2.node);})*;
+	(MULTIPLICATION t2=term{$node = new Multiplication($node, $t2.node);}
+		|(DIVISION t2=term{$node = new Division($node, $t2.node);})
+		
+	)*
+	;
 		
 		
 term returns [ASTNode node]:
 	NUMBER {$node = new Constant(Integer.parseInt($NUMBER.text));}
 	| BOOL {$node = new Constant(Boolean.parseBoolean($BOOL.text));}
 	|ID  {$node= new VarRef($ID.text);}
+	|STRING {$node = new Constant($STRING.text);}
 	|LBRACKET expression{$node = $expression.node;} RBRACKET
 	;
 		
